@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 'use strict';
 /**
  * Since we want to do a "npm publish" on every CI run for master, we need to:
