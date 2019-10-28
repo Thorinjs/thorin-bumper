@@ -1,7 +1,7 @@
 {
   "name": "thorin-bumper",
   "author": "UNLOQ Systems LTD",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "dependencies": {},
   "description": "Simple package.json version bumper, comparing the published version and the local version",
   "main": "index.js",

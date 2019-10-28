@@ -112,6 +112,9 @@ function req(url, opt = {}) {
           data = JSON.parse(data);
         } catch (e) {
         }
+        if (typeof data === 'object' && data && data.error) {
+          return reject(new Error(`NPM Error: ${data.error}`));
+        }
         resolve(data);
       });
     });
