@@ -15,9 +15,12 @@
  * */
 const path = require('path'),
   fs = require('fs'),
+  turl = require('url'),
   https = require('https'),
   projectDir = process.cwd(),
-  packagePath = path.normalize(projectDir + '/package.json');
+  packagePath = path.normalize(projectDir + '/package.json'),
+  npmShrinkwrapPath = path.normalize(projectDir + '/npm-shrinkwrap.json'),
+  packageLockPath = path.normalize(projectDir + '/package-lock.json');
 
 let npmToken = process.env.NPM_TOKEN,
   npmRegistry = process.env.NPM_REGISTRY;
@@ -64,6 +67,11 @@ if (npmRegistry.charAt(0) === '/') npmRegistry = 'https:' + npmRegistry;
     console.log(e);
     return process.exit(1);
   }
+  if (!pkgInfo || !pkgInfo['dist-tags']) {
+    console.error(`-> Failed to fetch valid pkg information`);
+    console.log(pkgInfo);
+    return process.exit(1);
+  }
   let latestVersion = pkgInfo['dist-tags'].latest;
   if (!latestVersion) {
     console.error(`-> Failed to parse published package information`);
@@ -84,13 +92,25 @@ if (npmRegistry.charAt(0) === '/') npmRegistry = 'https:' + npmRegistry;
   console.log(`-> Bumping version to [${targetVersion}]`);
   packageInfo.version = targetVersion;
   try {
-    //   fs.writeFileSync(packagePath, JSON.stringify(packageInfo, null, 2), 'utf8');
-    process.exit(0);
+    fs.writeFileSync(packagePath, JSON.stringify(packageInfo, null, 2), 'utf8');
   } catch (e) {
     console.error(`Could not update package version to [${targetVersion}]`);
     console.error(e);
     return process.exit(1);
   }
+  try {
+    let npmShrink = require(npmShrinkwrapPath);
+    npmShrink.version = targetVersion;
+    fs.writeFileSync(npmShrinkwrapPath, JSON.stringify(npmShrink, null, 2), 'utf8');
+  } catch (e) {
+  }
+  try {
+    let pkgLock = require(packageLockPath);
+    pkgLock.version = targetVersion;
+    fs.writeFileSync(packageLockPath, JSON.stringify(pkgLock, null, 1), 'utf8');
+  } catch (e) {
+  }
+  process.exit(0);
 })();
 
 /**
@@ -104,7 +124,11 @@ function req(url, opt = {}) {
   }
   opt.headers['Accept'] = 'application/json';
   return new Promise((resolve, reject) => {
-    let r = https.get(url, opt, (res) => {
+    let q = turl.parse(url);
+    opt.hostname = q.hostname;
+    opt.host = q.host;
+    opt.path = q.path;
+    let r = https.get(opt, (res) => {
       let data = '';
       res.on('data', (d) => data += d.toString());
       res.on('end', () => {
@@ -118,7 +142,7 @@ function req(url, opt = {}) {
         resolve(data);
       });
     });
-    r.on('error', reject);
+    r.on('error', (e) => reject(e));
   });
 }
 
